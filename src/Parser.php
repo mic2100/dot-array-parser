@@ -3,6 +3,7 @@
 namespace Mic2100\DotArrayParser;
 
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class Parser
@@ -14,21 +15,46 @@ use InvalidArgumentException;
 class Parser
 {
     /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * Parser constructor.
+     *
+     * @param LoggerInterface|null $logger
+     */
+    public function __construct(LoggerInterface $logger = null)
+    {
+        $this->logger = $logger;
+    }
+
+    /**
      * Parse the syntax and return the value from the array
      *
      * @param string $syntax
      * @param array $array
-     * @throws InvalidArgumentException - if the syntax is empty
+     * @param null|mixed $default - this value will be returned if this method cannot find a value to return
      *
      * @return mixed
      */
-    public function handle(string $syntax, array $array)
+    public function handle(string $syntax, array $array, $default = null)
     {
         if (empty($syntax)) {
-            throw new InvalidArgumentException('You need to pass some array syntax');
+            throw new InvalidArgumentException('You need to pass a valid array syntax. e.g. key1.key2.key3');
         }
 
-        return $this->getValue($this->getKeys($syntax), $array);
+        try {
+            return $this->getValue($this->getKeys($syntax), $array);
+        } catch (InvalidArgumentException $exception) {
+            if ($this->logger) {
+                $this->logger->warning($exception);
+            } else {
+                error_log($exception);
+            }
+
+            return $default;
+        }
     }
 
     /**
@@ -41,16 +67,7 @@ class Parser
      */
     private function getKeys(string $syntax): array
     {
-        $keys = [];
-        foreach (explode('.', $syntax) as $key) {
-            $keys[] = $key;
-        }
-
-        if (empty($keys)) {
-            throw new InvalidArgumentException('There are no keys passed in the syntax: ' . var_export($syntax, true));
-        }
-
-        return $keys;
+        return explode('.', $syntax);
     }
 
     /**
@@ -64,15 +81,14 @@ class Parser
      */
     private function getValue(array $keys, array $array)
     {
-        $value = $array;
         foreach ($keys as $key) {
-            if (!isset($value[$key]) || !array_key_exists($key, $value)) {
+            if (!isset($array[$key]) || !array_key_exists($key, $array)) {
                 throw new InvalidArgumentException('The key does not exist: ' . $key);
             }
 
-            $value = $value[$key];
+            $array = $array[$key];
         }
 
-        return $value;
+        return $array;
     }
 }

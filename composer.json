@@ -8,7 +8,9 @@
             "email": "mic.bardsley@outlook.com"
         }
     ],
-    "require": {},
+    "require": {
+        "psr/log": "^1.1"
+    },
     "autoload": {
         "psr-4": {
             "Mic2100\\DotArrayParser\\": "src/"
